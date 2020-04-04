@@ -93,6 +93,7 @@ extracted <- data.frame(Date=seq(as.Date("2020/2/16"), as.Date("2020/3/29"), by=
            Relative_mobility=y[x.sel])
 
 ## You can now save this as a csv or plain text
+head(extracted)
 ```
 
 Let's plot

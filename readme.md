@@ -94,7 +94,16 @@ extracted <- data.frame(Date=seq(as.Date("2020/2/16"), as.Date("2020/3/29"), by=
            Relative_mobility=y[x.sel])
 
 ## You can now save this as a csv or plain text
+head(extracted)
 ```
+
+    ##         Date Relative_mobility
+    ## 1 2020-02-16       -0.15384615
+    ## 2 2020-02-17       -0.06993007
+    ## 3 2020-02-18       -0.09230769
+    ## 4 2020-02-19       -0.13706294
+    ## 5 2020-02-20       -0.12867133
+    ## 6 2020-02-21       -0.12307692
 
 Let’s plot
 
