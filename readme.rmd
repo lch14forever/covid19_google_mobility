@@ -1,0 +1,109 @@
+---
+output:
+  md_document:
+      variant: gfm
+html_preview: true
+---
+
+# Extracting data from google's COVID-19 community mobility reports
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Google has recently published [reports on the mobilty data](https://www.google.com/covid19/mobility/) for different contires/regions. However, I could not find the raw data behind the plots. Here is my attemp to recover the raw data.
+
+### Downloading the report and extract the data graphs
+
+This is done using [shell commands](getdata.md).
+
+### Process one example image in R (Grocery & pharmacy in Singapore)
+
+Load libraries and an example image
+
+```{r message=FALSE, warning=FALSE}
+library(grid)
+library(dplyr)
+library(png)
+library(ggplot2)
+img <- readPNG("2020-03-29_SG_Mobility_Report_en.2.png")
+```
+
+
+We can extract the color with a digital color meter:
+
+ - Graph color rgb(81, 135,237) or rgb(0.32, 0.53, 0.93)
+ - Grid color rgb(216, 218, 222) or rgb(0.85, 0.85, 0.87)
+
+
+Find the graph
+```{r}
+delta <- 0.08
+
+graph.sel <- abs(img[,,1] - 0.32) < delta & abs(img[,,2] - 0.53) < delta & abs(img[,,3] - 0.93) < delta
+
+## Validate the selection
+img[,,1][graph.sel] <- 1
+img[,,2][graph.sel] <- 0
+img[,,3][graph.sel] <- 0
+
+grid.raster(img[,,])
+```
+
+Find the grid
+```{r}
+delta <- 0.08
+grid.sel <- abs(img[,,1] - 0.85) < delta & abs(img[,,2] - 0.85) < delta & abs(img[,,3] - 0.85) < delta
+
+img[,,1][grid.sel] <- 0
+img[,,2][grid.sel] <- 1
+img[,,3][grid.sel] <- 0
+
+grid.raster(img[,,])
+```
+
+Find y values
+```{r}
+gridlines.y <- data.frame(rows=which(grid.sel[, round(dim(grid.sel)[2]/2)])) %>% 
+    mutate(diff=rows-lag(rows)) %>% 
+    filter(diff >2 | is.na(diff)) %>% 
+    pull(rows)
+zero <- (gridlines.y[1] + last(gridlines.y))/2
+scale <- 1.6/abs(gridlines.y[1] - last(gridlines.y))
+
+y <- (zero-apply(graph.sel,2,function(x) mean(which(x))) )* scale
+
+# check extracted data shape
+plot(y)
+```
+
+Find x values
+```{r}
+## find position of the ticks
+tmp <- grid.sel[last(gridlines.y):(last(gridlines.y) + 10),] %>% colSums()
+
+ticks.x <- data.frame(cols=which(tmp > 5)) %>% 
+    mutate(diff=cols-lag(cols)) %>% 
+    filter(diff >2 | is.na(diff)) %>% pull(cols) 
+
+step <- (last(ticks.x)-ticks.x[1])/42## 43 days
+x.sel <- round(seq(ticks.x[1] +1, length=43, by=step))
+
+extracted <- data.frame(Date=seq(as.Date("2020/2/16"), as.Date("2020/3/29"), by=1),
+           Relative_mobility=y[x.sel])
+
+## You can now save this as a csv or plain text
+```
+
+Let's plot
+```{r}
+ggplot(extracted, aes(x=Date, y=Relative_mobility*100)) + 
+    geom_area(fill='grey') + 
+    geom_line(lwd=2) + 
+    theme_bw() 
+```
+
+Session information
+```{r}
+sessionInfo()
+```
